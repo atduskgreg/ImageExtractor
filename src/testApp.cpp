@@ -54,10 +54,12 @@ void testApp::draw(){
     ofScale(0.4, 0.4);
 
 	original.draw(0,0);
-    grayImage.draw(original.width, 0);
+    //grayImage.draw(original.width, 0);
     ofSetHexColor(0x00ff00);
     ofNoFill();
     ofSetLineWidth(3.0);
+    
+    
     
     for (int i = 0; i < contourFinder.nBlobs; i++){
         stringstream out;
@@ -65,8 +67,34 @@ void testApp::draw(){
         ofDrawBitmapString(out.str(), contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y);
         
         if(contourFinder.blobs[i].boundingRect.width * contourFinder.blobs[i].boundingRect.height > minBlobSize){
-            cout << "blob " << i << " x/y: " << contourFinder.blobs[i].boundingRect.x  << "/" << contourFinder.blobs[i].boundingRect.y << " size: " << contourFinder.blobs[i].boundingRect.width * contourFinder.blobs[i].boundingRect.height << endl;
-        
+            
+           ofVec3f nw = ofVec3f(contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y, 0);
+            ofVec3f ne = ofVec3f(nw.x + contourFinder.blobs[i].boundingRect.width, nw.y,0);
+            ofVec3f se = ofVec3f(ne.x, ne.y + contourFinder.blobs[i].boundingRect.height,0);
+            ofVec3f sw = ofVec3f(nw.x, nw.y + contourFinder.blobs[i].boundingRect.height,0);
+            
+          
+            
+            ofMesh subImage;
+            
+            subImage.setMode(OF_PRIMITIVE_TRIANGLE_FAN);
+            subImage.addVertex(ofVec3f(original.width + 100, original.height /2, 0));
+            subImage.addTexCoord(ofVec2f(nw.x, nw.y));
+            subImage.addVertex(ofVec3f(original.width + 100 + contourFinder.blobs[i].boundingRect.width, original.height /2, 0));
+            subImage.addTexCoord(ofVec2f(ne.x, ne.y));
+            subImage.addVertex(ofVec3f(original.width + 100 + contourFinder.blobs[i].boundingRect.width, original.height /2 + contourFinder.blobs[i].boundingRect.height, 0));
+            subImage.addTexCoord(ofVec2f(se.x, se.y));
+            subImage.addVertex(ofVec3f(original.width + 100, original.height /2 + contourFinder.blobs[i].boundingRect.height, 0));
+            subImage.addTexCoord(ofVec2f(sw.x, sw.y));
+            
+            
+            ofSetColor(255, 255, 255);
+            original.getTextureReference().bind();
+            subImage.draw();
+            original.getTextureReference().unbind();
+                  
+            ofSetColor(0, 255, 0);
+
             ofRect(contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y, contourFinder.blobs[i].boundingRect.width, contourFinder.blobs[i].boundingRect.height);
         }
     }
