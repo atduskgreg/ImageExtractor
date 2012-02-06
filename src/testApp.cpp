@@ -13,17 +13,13 @@ void testApp::setup(){
     grayImage.setFromPixels(original.getPixels(), original.width, original.height);
     grayImage.updateTexture();
     
-	//grayBg.allocate(1275, 1650);
-	//grayDiff.allocate(1275, 1650);
-
-	//bLearnBakground = true;
-	//threshold = 80;*/
+    minBlobSize = 6000;
 }
 
 //--------------------------------------------------------------
 void testApp::update(){
-	ofBackground(100,100,100);
 
+    
 
     /*
 		if (bLearnBakground == true){
@@ -47,7 +43,13 @@ void testApp::update(){
 //--------------------------------------------------------------
 void testApp::draw(){
     ofBackground(0, 0, 0);
-   // cout << "w: " << original.width << " h: " << original.height << endl;
+    
+    ofSetHexColor(0xffffff);
+    ofFill();
+    stringstream out;
+    out << "minimum image size: " << minBlobSize << " (+/- to change)" << endl;
+    ofDrawBitmapString(out.str(), 20, 700);
+    
     ofSetHexColor(0xffffff);
     ofScale(0.4, 0.4);
 
@@ -55,17 +57,20 @@ void testApp::draw(){
     grayImage.draw(original.width, 0);
     ofSetHexColor(0x00ff00);
     ofNoFill();
-    
+    ofSetLineWidth(3.0);
     
     for (int i = 0; i < contourFinder.nBlobs; i++){
         stringstream out;
         out << i;
         ofDrawBitmapString(out.str(), contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y);
         
-        cout << "blob " << i << " x/y: " << contourFinder.blobs[i].boundingRect.x  << "/" << contourFinder.blobs[i].boundingRect.y << " w/h: " << contourFinder.blobs[i].boundingRect.width << "/" << contourFinder.blobs[i].boundingRect.height << endl;
+        if(contourFinder.blobs[i].boundingRect.width * contourFinder.blobs[i].boundingRect.height > minBlobSize){
+            cout << "blob " << i << " x/y: " << contourFinder.blobs[i].boundingRect.x  << "/" << contourFinder.blobs[i].boundingRect.y << " size: " << contourFinder.blobs[i].boundingRect.width * contourFinder.blobs[i].boundingRect.height << endl;
         
-        ofRect(contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y, contourFinder.blobs[i].boundingRect.width, contourFinder.blobs[i].boundingRect.height);
+            ofRect(contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y, contourFinder.blobs[i].boundingRect.width, contourFinder.blobs[i].boundingRect.height);
+        }
     }
+ 
 
     
     
@@ -99,21 +104,17 @@ void testApp::draw(){
 
 //--------------------------------------------------------------
 void testApp::keyPressed(int key){
-/*
+
 	switch (key){
-		case ' ':
-			bLearnBakground = true;
-			break;
+
 		case '+':
-			threshold ++;
-			if (threshold > 255) threshold = 255;
+			minBlobSize += 1000;
 			break;
 		case '-':
-			threshold --;
-			if (threshold < 0) threshold = 0;
+            minBlobSize -= 1000;
 			break;
 	}
- */
+ 
 }
 
 //--------------------------------------------------------------

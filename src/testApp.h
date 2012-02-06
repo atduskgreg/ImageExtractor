@@ -27,11 +27,13 @@ class testApp : public ofBaseApp{
         ofxCvColorImage			colorImg;
 
         ofxCvGrayscaleImage 	grayImage;
-		ofxCvGrayscaleImage 	grayBg;
-		ofxCvGrayscaleImage 	grayDiff;
+
+    int minBlobSize;
 
         ofxCvContourFinder 	contourFinder;
         ofImage original;
+    
+        
 
 
 		int 				threshold;
