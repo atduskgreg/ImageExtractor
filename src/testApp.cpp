@@ -50,7 +50,12 @@ void testApp::draw(){
     out << "minimum image size: " << minBlobSize << " (+/- to change)" << endl;
     ofDrawBitmapString(out.str(), 20, 700);
     
+    ofSetHexColor(0x00ff00);
+ 
+    ofDrawBitmapString("Found Images", 520, 20);
+
     ofSetHexColor(0xffffff);
+
     ofScale(0.4, 0.4);
 
 	original.draw(0,0);
@@ -58,6 +63,8 @@ void testApp::draw(){
     ofSetHexColor(0x00ff00);
     ofNoFill();
     ofSetLineWidth(3.0);
+    
+    int currentHeight = 100;
     
     
     
@@ -67,68 +74,52 @@ void testApp::draw(){
         ofDrawBitmapString(out.str(), contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y);
         
         if(contourFinder.blobs[i].boundingRect.width * contourFinder.blobs[i].boundingRect.height > minBlobSize){
+
+                    
+            ofPushMatrix();
             
-           ofVec3f nw = ofVec3f(contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y, 0);
-            ofVec3f ne = ofVec3f(nw.x + contourFinder.blobs[i].boundingRect.width, nw.y,0);
-            ofVec3f se = ofVec3f(ne.x, ne.y + contourFinder.blobs[i].boundingRect.height,0);
-            ofVec3f sw = ofVec3f(nw.x, nw.y + contourFinder.blobs[i].boundingRect.height,0);
+                ofTranslate(original.width + 20, currentHeight);
+                ofScale(1.0/0.4, 1/0.4);
+
+                ofSetColor(255);
+                drawCropped(original, contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y, contourFinder.blobs[i].boundingRect.width, contourFinder.blobs[i].boundingRect.height);
+                
+            ofPopMatrix();
             
-          
-            
-            ofMesh subImage;
-            
-            subImage.setMode(OF_PRIMITIVE_TRIANGLE_FAN);
-            subImage.addVertex(ofVec3f(original.width + 100, original.height /2, 0));
-            subImage.addTexCoord(ofVec2f(nw.x, nw.y));
-            subImage.addVertex(ofVec3f(original.width + 100 + contourFinder.blobs[i].boundingRect.width, original.height /2, 0));
-            subImage.addTexCoord(ofVec2f(ne.x, ne.y));
-            subImage.addVertex(ofVec3f(original.width + 100 + contourFinder.blobs[i].boundingRect.width, original.height /2 + contourFinder.blobs[i].boundingRect.height, 0));
-            subImage.addTexCoord(ofVec2f(se.x, se.y));
-            subImage.addVertex(ofVec3f(original.width + 100, original.height /2 + contourFinder.blobs[i].boundingRect.height, 0));
-            subImage.addTexCoord(ofVec2f(sw.x, sw.y));
-            
-            
-            ofSetColor(255, 255, 255);
-            original.getTextureReference().bind();
-            subImage.draw();
-            original.getTextureReference().unbind();
-                  
+            currentHeight += contourFinder.blobs[i].boundingRect.height + 100;
+                              
             ofSetColor(0, 255, 0);
 
             ofRect(contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y, contourFinder.blobs[i].boundingRect.width, contourFinder.blobs[i].boundingRect.height);
         }
     }
- 
-
-    
-    
-/*
-	// draw the incoming, the grayscale, the bg and the thresholded difference
-	ofSetHexColor(0xffffff);
-	colorImg.draw(20,20);
-	grayImage.draw(1275,20);
-	grayBg.draw(20,1650);
-	grayDiff.draw(1275, 1650);
-
-	// then draw the contours:
-
-	ofFill();
-	ofSetHexColor(0x333333);
-	ofRect(360,540,320,240);
-	ofSetHexColor(0xffffff);
-
-	// we could draw the whole contour finder
-
-	// or, instead we can draw each blob individually,
-	// this is how to get access to them:
-    
-
-	// finally, a report:
-
-	
- */
 
 }
+
+    void testApp::drawCropped(ofImage& img, int x, int y, int w, int h){
+        ofVec2f nw(x, y);
+        ofVec2f ne(nw.x + w, nw.y);
+        ofVec2f se(ne.x, ne.y + h);
+        ofVec2f sw(nw.x, nw.y + h);
+        
+        ofMesh subImage;
+        
+        subImage.setMode(OF_PRIMITIVE_TRIANGLE_FAN);
+        
+        subImage.addVertex(ofVec2f(0, 0));
+        subImage.addTexCoord(nw);
+        subImage.addVertex(ofVec3f(w, 0));
+        subImage.addTexCoord(ne);
+        subImage.addVertex(ofVec3f(w, h));
+        subImage.addTexCoord(se);
+        subImage.addVertex(ofVec3f(0, h));
+        subImage.addTexCoord(sw);
+        
+        img.getTextureReference().bind();
+        subImage.draw();
+        img.getTextureReference().unbind();
+    }
+
 
 //--------------------------------------------------------------
 void testApp::keyPressed(int key){

@@ -23,7 +23,9 @@ class testApp : public ofBaseApp{
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);		
+        void drawCropped(ofImage& img, int x, int y, int w, int h);
 
+    
         ofxCvColorImage			colorImg;
 
         ofxCvGrayscaleImage 	grayImage;
