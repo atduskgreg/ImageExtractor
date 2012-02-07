@@ -24,8 +24,16 @@ class testApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);		
         void drawCropped(ofImage& img, int x, int y, int w, int h);
-
+    void refreshPage();
     
+    int currentImage;
+
+    int numImages;
+    int padding;
+    
+    int blobSizeThreshold;
+        ofDirectory imageDir;
+
         ofxCvColorImage			colorImg;
 
         ofxCvGrayscaleImage 	grayImage;
@@ -34,12 +42,8 @@ class testApp : public ofBaseApp{
 
         ofxCvContourFinder 	contourFinder;
         ofImage original;
-    
-        
 
-
-		int 				threshold;
-		bool				bLearnBakground;
+    bool needsSave;
 
 
 };
