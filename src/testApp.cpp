@@ -5,34 +5,160 @@ void testApp::setup(){
 
 	
     
-    imageDir = ofDirectory();
+   /* imageDir = ofDirectory();
     imageDir.open("source/Brachman");
     currentImage = 0;
     
     cout << imageDir.listDir() << endl;    
     original.loadImage(imageDir.getPath(currentImage));
 
+*/
+    
+    imageLoaded = false;
+    currentMouse = ofPoint(0,0);
 
+    loadNewThesis();
+    
+    
+    imageCellSize = 70;
+    hitWindowThreshold = 20;
+    
+    windowSize = 25;
+    crossingThreshold = 0;
+    windowOffset = 35;
+    
+    scoreThreshold = 280;
+    ofEnableAlphaBlending(); 
+    
     numImages = 2;
     
     padding = 10;
     
+    /*
     colorImg.allocate(original.width, original.height);
     colorImg.setFromPixels(original.getPixels(), original.width, original.height);
     
-	grayImage.allocate(original.width, original.height);
-    grayImage.setFromPixels(original.getPixels(), original.width, original.height);
+	grayImage = colorImg;
     grayImage.updateTexture();
-    
+    cout << "about to get pixels" << endl;
+    currentPixels = grayImage.getPixels();
+    */
+     imageLoaded = true;
+
     blobSizeThreshold = 25000;
     needsSave = false;
+    
+    cout << "finish setup" << endl;
+
+}
+
+void testApp::loadNewThesis(){
+    ofFileDialogResult result = ofSystemLoadDialog("Please select a folder of images", true);
+    imageDir = ofDirectory();
+    imageDir.open(result.getPath());
+    currentImage = 0;
+    numPages = imageDir.listDir();
+    
+    cout << "list directory and load image" << endl;
+    
+    cout << imageDir.listDir() << endl;    
+    original.loadImage(imageDir.getPath(currentImage));
+    original.setImageType(OF_IMAGE_GRAYSCALE);
+
+    cout << "original w: " << original.width << " h: " << original.height << endl;
+    
+    
+    stringstream saveDirName;
+    saveDirName << result.getPath() << "/" << "results";
+    saveTarget = ofDirectory(saveDirName.str());
+    if(!saveTarget.exists()){
+        cout << saveDirName.str() << " doesn't exist. Creating." << endl;
+        saveTarget.create();
+    } else {
+        cout << saveDirName.str() << " exists." << endl;
+    }
+        
 }
 
 //--------------------------------------------------------------
 void testApp::update(){
 
-    grayImage.threshold(80);
-    contourFinder.findContours(grayImage, 50, (1275 * 1650)/3, 10, true);	// find holes
+    
+    windows.clear();
+    
+    for(int y = 0; y < original.height; y+= windowOffset ){
+    
+        for(int x = 0; x < original.width; x+= windowOffset ){
+            windows.push_back( scoreWindow(x, y) );
+
+        }
+    }
+}
+
+DocumentWindow testApp::scoreWindow(int x, int y){
+    
+    int score = 0;
+    
+    currentPixels = original.getPixels();
+    
+    int windowCrossingThreshold = 0;
+        
+    for(int i = 0; i < windowSize; i++){
+        int j = (x + i) + (y + i)*original.width;
+            windowCrossingThreshold += currentPixels[j];
+    }
+    
+    windowCrossingThreshold /= windowSize;
+    
+    windowCrossingThreshold += crossingThreshold;
+    
+    
+    // horizontal pass
+    for(int row = 0; row< windowSize; row++){
+        for(int col = 0; col< windowSize-1; col++){
+
+            //int i = p + col + (windowSize * row);
+            int i = (x + col) + (y + row)*original.width;
+            
+                // crossing downwards
+                if((currentPixels[i] > windowCrossingThreshold) && 
+                   (currentPixels[i+1] <= windowCrossingThreshold)){
+                    
+                    score++;
+                }
+                
+                // crossing upwards
+                if((currentPixels[i] < windowCrossingThreshold) && 
+                   (currentPixels[i+1] >= windowCrossingThreshold)){
+                    
+                    score++;
+                }
+        }
+    }
+    
+    // vertical pass
+    for(int row = 0; row< windowSize-1; row++){
+        for(int col = 0; col< windowSize; col++){
+            
+            int j = (x + col) + (y + row)*original.width;
+                            
+                // crossing downwards
+                if((currentPixels[j] > windowCrossingThreshold) && 
+                   (currentPixels[j+windowSize] <= windowCrossingThreshold)){
+                    score++;
+                }
+                
+                // crossing upwards
+                if((currentPixels[j] < windowCrossingThreshold) && 
+                   (currentPixels[j+windowSize] >= windowCrossingThreshold)){
+                    score++;
+                }
+            
+            
+        }
+    }
+    
+    return DocumentWindow(x - windowSize/2,y -windowSize/2,score);
 }
 
 //--------------------------------------------------------------
@@ -42,14 +168,13 @@ void testApp::draw(){
     ofSetHexColor(0xffffff);
     ofFill();
     stringstream out;
-    out << "max number of images: " << numImages << " (+/- to change)" << endl;
-    out << "min size: " << minBlobSize << endl;
-    out << "padding: " << padding << endl;
+    out << "scoreThreshold: " << scoreThreshold << endl;
+    out << "crossingThreshold: " << crossingThreshold << endl;
 
     out << "next page: 'n'" << endl;
     out << "previous page: 'p'" << endl;
 
-    ofDrawBitmapString(out.str(), 20, 680);
+    ofDrawBitmapString(out.str(), 520, 680);
     
     ofSetHexColor(0x00ff00);
  
@@ -57,67 +182,119 @@ void testApp::draw(){
 
     ofSetHexColor(0xffffff);
 
+    ofPushMatrix();
     ofScale(0.4, 0.4);
 
-	original.draw(0,0);
-    //grayImage.draw(original.width, 0);
-    ofSetHexColor(0x00ff00);
-    ofNoFill();
-    ofSetLineWidth(3.0);
-    
+	//original.draw(0,0);
+    if(imageLoaded){
+    //    grayImage.draw(0, 0);
+        
+        original.draw(0,0);
+    }
     int currentHeight = 100;
     
     minBlobSize = 500000;
     
     vector<int> imagesToSave;
     
-    // check at most the number of
-    // blobs that we actually found
-    int numToCheck = numImages;
-    if(contourFinder.nBlobs < numToCheck){
-        numToCheck = contourFinder.nBlobs;
-    }
 
-    // blobs come in sorted by largest to smallest
-    // so we look at the numToCheck largest
-    for (int i = 0; i < numToCheck; i++){
-        stringstream out;
-        out << i;
-        ofDrawBitmapString(out.str(), contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y);
+    
+
+    vector<DocumentWindow> hitWindows;
+    
+    for(int i = 0; i < windows.size(); i++ ){
         
+            DocumentWindow window = windows.at(i);
         
-        if(contourFinder.blobs[i].boundingRect.width * contourFinder.blobs[i].boundingRect.height < minBlobSize){
-            minBlobSize = contourFinder.blobs[i].boundingRect.width * contourFinder.blobs[i].boundingRect.height;
+                    
+            if(window.score > scoreThreshold){
+                float a = ofMap(window.score, 0, scoreThreshold * 2, 0, 255);
+
+                ofSetColor(255,0,0, a);
+                ofRect(window.x,window.y,windowSize, windowSize);
+                
+                hitWindows.push_back(window);
+            }
+    }
+    
+    /*int lowX = 0;
+    int lowY = 0;
+    int highX = original.width;
+    int highY = original.height;
+
+    for(int i = 0; i < hitWindows.size(); i++){
+        DocumentWindow w = hitWindows.at(i);
+        
+        if(w.x > lowX){
+            lowX = w.x;
         }
         
-//        ofPushStyle();
-//        ofSetColor(255,0,0);
-//        ofFill();
-//        ofEllipse(contourFinder.blobs[i].boundingRect.getCenter().x, contourFinder.blobs[i].boundingRect.getCenter().y, 10, 10);
-//        ofPopStyle();
+        if(w.y > lowY){
+            lowY = w.y;
+        }
         
-        if(contourFinder.blobs[i].boundingRect.width * contourFinder.blobs[i].boundingRect.height > blobSizeThreshold && !(i > 0 && contourFinder.blobs[0].boundingRect.inside(contourFinder.blobs[i].boundingRect.getCenter()))){
-            imagesToSave.push_back(i);
-                    
-            ofPushMatrix();
-            
-                ofTranslate(original.width + 20, currentHeight);
-                ofScale(1.0/0.4, 1/0.4);
-
-                ofSetColor(255);
-                drawCropped(original, contourFinder.blobs[i].boundingRect.x - padding/2, contourFinder.blobs[i].boundingRect.y - padding/2, contourFinder.blobs[i].boundingRect.width + padding, contourFinder.blobs[i].boundingRect.height + padding);
-            
-                         
-            ofPopMatrix();
-            
-            currentHeight += contourFinder.blobs[i].boundingRect.height + 100;
-                              
-            ofSetColor(0, 255, 0);
-
-            ofRect(contourFinder.blobs[i].boundingRect.x - padding/2, contourFinder.blobs[i].boundingRect.y - padding/2, contourFinder.blobs[i].boundingRect.width + padding, contourFinder.blobs[i].boundingRect.height + padding);
+        if(w.x < highX){
+            highX = w.x;
+        }
+        
+        if(w.y < highY){
+            highY = w.y;
         }
     }
     
+    ofSetColor(0, 255, 0);
+    ofNoFill();
+    ofRect(lowX, lowY, highX, highY);
+     */
+    
+    
+    for(int y = 0; y < original.width; y += imageCellSize){
+        
+        for(int x = 0;x < original.width; x += imageCellSize){
+            
+            int cellCount = 0;
+            for(int i = 0; i < hitWindows.size(); i++){
+                DocumentWindow w = hitWindows.at(i);
+                if(w.x > x && w.y > y && w.x < x + imageCellSize && w.y < y + imageCellSize ){
+                    
+                    cellCount++;
+                }
+                if(cellCount > hitWindowThreshold){
+                    ofSetColor(0,255,0, 50);
+                    ofRect(x, y, imageCellSize, imageCellSize);
+                }
+                
+                
+            }
+        }
+        
+    }
+    
+    
+    if(imageLoaded){
+    
+        DocumentWindow w = scoreWindow(currentMouse.x * 1/0.4, currentMouse.y * 1/0.4);
+
+                
+        ofPopMatrix();
+
+        ofSetColor(255, 0, 0);
+        stringstream s;
+        s << "Score under mouse " << w.score << endl;
+        s << "hit window threshold " << hitWindowThreshold << endl;
+
+        cout << s.str();
+        
+        ofDrawBitmapString(s.str(), 520, 50);
+
+    }
+    
+  
+    
+    
+       
+    //cout << " highest score: " << highestScore << " lowestScore: " << lowestScore << endl;
+
     
     if(needsSave){
         
@@ -127,11 +304,15 @@ void testApp::draw(){
             ofImage temp;  
             temp.allocate(contourFinder.blobs[i].boundingRect.width,contourFinder.blobs[i].boundingRect.height, OF_IMAGE_COLOR);  
         
-            temp.cropFrom(original, contourFinder.blobs[i].boundingRect.x, contourFinder.blobs[i].boundingRect.y, contourFinder.blobs[i].boundingRect.width,contourFinder.blobs[i].boundingRect.height);
+            temp.cropFrom(original, contourFinder.blobs[i].boundingRect.x - padding/2, contourFinder.blobs[i].boundingRect.y - padding/2, contourFinder.blobs[i].boundingRect.width + padding,contourFinder.blobs[i].boundingRect.height + padding);
         
+            
+            // TODO:
+            // -fix this to make and save in a results folder in the current image dir
             stringstream name;
-            name << i;
+            name << saveTarget.path() << "/" << currentImage << "_" << i;
             name << ".jpg";
+            cout << "saving to: " << name.str() << endl;
             temp.saveImage(name.str());  
         }
         needsSave = false;
@@ -167,9 +348,24 @@ void testApp::draw(){
 
 
 void testApp::refreshPage(){
+    if(currentImage < 0){
+        currentImage = numPages - 1;
+    }
+    
+    if(currentImage >= numPages){
+        currentImage = 0;
+    }
+    
+    cout << "currentImage: " << currentImage << endl;
+    
+    
     original.loadImage(imageDir.getPath(currentImage));
-    grayImage.setFromPixels(original.getPixels(), original.width, original.height);
-    grayImage.updateTexture();
+    original.setImageType(OF_IMAGE_GRAYSCALE);
+    //grayImage.setFromPixels(original.getPixels(), original.width, original.height);
+   // grayImage.updateTexture();
+    //currentPixels = grayImage.getPixels();
+    cout << "reloaded pixels" << endl;
+
 }
 
 
@@ -178,13 +374,18 @@ void testApp::keyPressed(int key){
 
 	switch (key){
 
-		case '+':
-            numImages++;
+		case '=':
+            //numImages++;
 			//minBlobSize += 1000;
+            scoreThreshold += 10;
+            cout << "score threshold " << scoreThreshold << endl;
 			break;
 		case '-':
-            numImages--;
+            //numImages--;
             //minBlobSize -= 1000;
+            scoreThreshold -= 10;
+            cout << "score threshold " << scoreThreshold << endl;
+
 			break;
             
         case 's':
@@ -195,14 +396,26 @@ void testApp::keyPressed(int key){
             refreshPage();
             break;
         case 'p':
-            currentImage--;
+            currentImage--;            
             refreshPage();
             break;
         case '>':
-            padding += 5;
+            crossingThreshold += 5;
+            cout << "crossingThreshold " << crossingThreshold << endl;
             break;
         case '<':
-            padding -= 5;
+            crossingThreshold -= 5;
+            cout << "crossingThreshold " << crossingThreshold << endl;
+
+            break;
+        case 'l':
+            loadNewThesis();
+            break;
+        case '1':
+            hitWindowThreshold -= 1;
+            break;
+        case '2':
+            hitWindowThreshold += 1;
             break;
 	}
  
@@ -215,7 +428,8 @@ void testApp::keyReleased(int key){
 
 //--------------------------------------------------------------
 void testApp::mouseMoved(int x, int y ){
-
+    currentMouse.x = x;
+    currentMouse.y = y;
 }
 
 //--------------------------------------------------------------

@@ -4,6 +4,8 @@
 
 #include "ofxOpenCv.h"
 
+#include "DocumentWindow.h"
+
 //#define _USE_LIVE_VIDEO		// uncomment this to use a live camera
 								// otherwise, we'll use a movie file
 
@@ -25,8 +27,31 @@ class testApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);		
         void drawCropped(ofImage& img, int x, int y, int w, int h);
     void refreshPage();
+    void loadNewThesis();
+
+    DocumentWindow scoreWindow(int x, int y);
+    
+    unsigned char * currentPixels;
+    
+    int windowSize;
+    int crossingThreshold;
+    int windowOffset;
+    
+    int scoreThreshold;
+    
+    bool imageLoaded;
+    
+    vector<DocumentWindow> windows;
     
     int currentImage;
+    
+    int imageCellSize;
+    
+    int hitWindowThreshold;
+    
+    int numPages;
+    
+    ofPoint currentMouse;
 
     int numImages;
     int padding;
@@ -44,6 +69,8 @@ class testApp : public ofBaseApp{
         ofImage original;
 
     bool needsSave;
+    
+    ofDirectory saveTarget;
 
 
 };
